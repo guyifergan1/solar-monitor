@@ -14,12 +14,10 @@
 #include "display.h"
 #include "sensors.h"
 
-// ── System State ──────────────────────────────────────────────────────────────
 static bool     oledOk     = false;
 static bool     inaOk      = false;
 static uint32_t lastReadMs = 0;
 
-// ─────────────────────────────────────────────────────────────────────────────
 void setup() {
     Serial.begin(115200);
     Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);

@@ -9,8 +9,6 @@
 // No other file can access it directly — only through the functions below.
 static Adafruit_SSD1306 display(SCREEN_W, SCREEN_H, &Wire, OLED_RESET);
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 bool initOLED() {
     if (!display.begin(SSD1306_SWITCHCAPVCC, ADDR_OLED)) {
         Serial.println(F("[ERROR] SSD1306 init failed — address 0x3C not found"));
@@ -40,7 +38,6 @@ void displayVoltage(float volts) {
     display.print(F("Solar IoT Node"));
     display.drawFastHLine(0, 10, SCREEN_W, SSD1306_WHITE);
 
-    // Large voltage readout in the centre of the screen
     display.setTextSize(2);
     display.setCursor(8, 20);
     display.print(vStr);

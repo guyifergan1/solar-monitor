@@ -7,8 +7,6 @@
 // The INA3221 object is private to this translation unit.
 static Adafruit_INA3221 ina3221;
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 bool initINA3221() {
     if (!ina3221.begin(ADDR_INA3221, &Wire)) {
         Serial.println(F("[ERROR] INA3221 init failed — address 0x40 not found"));
