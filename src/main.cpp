@@ -35,21 +35,24 @@ void setup() {
         Serial.println(F("[FATAL] No I2C peripherals. Check wiring!"));
     }
 
-    float busVoltage = inaOk ? readBusVoltage(0) : 0.0f;
-    float light      = readLightPercentage();
+    float busVoltage = 0.0f;
+    float light      = 0.0f;
 
-    Serial.print(F("[DATA] CH1 Bus Voltage: "));
-    Serial.print(busVoltage, 3);
-    Serial.println(F(" V"));
+    unsigned long wakeStart = millis();
+    while (millis() - wakeStart < DISPLAY_ON_MS) {
+        busVoltage = inaOk ? readBusVoltage(0) : 0.0f;
+        light      = readLightPercentage();
 
-    Serial.print(F("[DATA] Light: "));
-    Serial.print(light, 1);
-    Serial.println(F(" %"));
+        Serial.print(F("[DATA] CH1 Bus Voltage: "));
+        Serial.print(busVoltage, 3);
+        Serial.println(F(" V"));
+        Serial.print(F("[DATA] Light: "));
+        Serial.print(light, 1);
+        Serial.println(F(" %"));
 
-    if (oledOk) displayAll(busVoltage, light, bootCount);
-
-    // delay() is acceptable here — MCU is about to sleep anyway
-    delay(DISPLAY_ON_MS);
+        if (oledOk) displayAll(busVoltage, light, bootCount);
+        delay(300);
+    }
 
     Serial.printf("[INFO] Sleeping for %llu seconds...\n", SLEEP_INTERVAL_US / 1000000ULL);
     Serial.flush();
