@@ -58,7 +58,7 @@ Each hardware module has its own `.h`/`.cpp` pair. Hardware objects are `static`
 
 ## Architecture Decisions
 
-**Deep Sleep** — ESP32 reads sensors, displays, then sleeps. Wakes on timer. `setup()` runs on every wake cycle, `loop()` is empty.  
+**Deep Sleep** — ESP32 reads sensors, displays for 5 s, then sleeps 25 s. Wakes on timer. `setup()` runs on every wake cycle, `loop()` is empty.  
 **Graceful degradation** — each peripheral returns `bool` from init. System continues if one device is missing.  
 **`F()` macro** — string literals kept in Flash, not RAM.  
 **Encapsulation** — hardware objects hidden inside translation units, exposed only via function calls.  
@@ -75,7 +75,7 @@ Each hardware module has its own `.h`/`.cpp` pair. Hardware objects are `static`
 [OK] INA3221 initialized at 0x40
 [DATA] CH1 Bus Voltage: 3.300 V
 [DATA] Light: 75.8 %
-[INFO] Sleeping for 10 seconds...
+[INFO] Sleeping for 25 seconds...
 
 === Solar IoT Node - Stage 3 | Boot #2 ===
 ...
@@ -98,10 +98,11 @@ Each hardware module has its own `.h`/`.cpp` pair. Hardware objects are `static`
 - New module: `ldr.h` / `ldr.cpp`
 
 ### Stage 3 — Deep Sleep ✅
-- ESP32 reads sensors → displays → sleeps 10 seconds → wakes
-- `setup()` runs on every wake cycle
-- Boot count tracked across sleep cycles via RTC memory
-- OLED cleared before sleep to save power
+- ESP32 reads sensors → displays → sleeps 25 seconds → wakes (30s total cycle)
+- Combined OLED screen: voltage + light % + boot counter on one frame
+- Screen stays on 5 seconds (readable), then clears before sleep
+- `setup()` runs on every wake cycle; `loop()` is intentionally empty
+- Boot count tracked across sleep cycles via `RTC_DATA_ATTR` (RTC memory)
 
 ### Stage 4 — WiFi + Data Logging 🔜
 - Send readings to server / MQTT / Google Sheets
