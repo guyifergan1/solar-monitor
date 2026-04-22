@@ -60,3 +60,26 @@ void displayError(const char* msg) {
     display.println(msg);
     display.display();
 }
+
+void displayLight(float percentage) {
+    char pStr[8];
+    dtostrf(percentage, 5, 1, pStr);
+
+    display.clearDisplay();
+
+    display.setTextSize(1);
+    display.setCursor(0, 0);
+    display.print(F("Solar IoT Node"));
+    display.drawFastHLine(0, 10, SCREEN_W, SSD1306_WHITE);
+
+    display.setTextSize(2);
+    display.setCursor(8, 20);
+    display.print(pStr);
+    display.print(F(" %"));
+
+    display.setTextSize(1);
+    display.setCursor(0, 52);
+    display.print(F("Light Level"));
+
+    display.display();
+}

@@ -13,10 +13,12 @@
 #include "config.h"
 #include "display.h"
 #include "sensors.h"
+#include "ldr.h"
 
-static bool     oledOk     = false;
-static bool     inaOk      = false;
-static uint32_t lastReadMs = 0;
+static bool     oledOk      = false;
+static bool     inaOk       = false;
+static uint32_t lastReadMs  = 0;
+static bool     showVoltage = true;  // toggles display between voltage and light
 
 void setup() {
     Serial.begin(115200);
@@ -26,6 +28,7 @@ void setup() {
 
     oledOk = initOLED();
     inaOk  = initINA3221();
+    initLDR();
 
     // If nothing responds on I2C the wiring is wrong — blink LED as a panic indicator
     if (!oledOk && !inaOk) {
@@ -55,5 +58,14 @@ void loop() {
     Serial.print(busVoltage, 3);
     Serial.println(F(" V"));
 
-    if (oledOk) displayVoltage(busVoltage);
+    float light = readLightPercentage();
+    Serial.print(F("[DATA] Light: "));
+    Serial.print(light, 1);
+    Serial.println(F(" %"));
+
+    if (oledOk) {
+        if (showVoltage) displayVoltage(busVoltage);
+        else             displayLight(light);
+        showVoltage = !showVoltage;
+    }
 }

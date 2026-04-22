@@ -12,3 +12,4 @@
 bool initOLED();
 void displayVoltage(float volts);
 void displayError(const char* msg);
+void displayLight(float percentage);
