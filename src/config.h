@@ -25,6 +25,7 @@
 #define LDR_MAX     4095    // ESP32 ADC is 12-bit (0–4095)
 
 // ── Deep Sleep ────────────────────────────────────────────────────────────────
-#define SLEEP_INTERVAL_US   10000000ULL  // 10 seconds in microseconds (uint64_t)
+#define DISPLAY_ON_MS       5000UL           // screen stays on 5 seconds before sleep
+#define SLEEP_INTERVAL_US   25000000ULL      // sleep 25 seconds (total cycle ~30s)
 
 

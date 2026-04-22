@@ -46,11 +46,14 @@ void setup() {
     Serial.print(light, 1);
     Serial.println(F(" %"));
 
-    if (oledOk) displayVoltage(busVoltage);
+    if (oledOk) displayAll(busVoltage, light, bootCount);
+
+    // delay() is acceptable here — MCU is about to sleep anyway
+    delay(DISPLAY_ON_MS);
 
     Serial.printf("[INFO] Sleeping for %llu seconds...\n", SLEEP_INTERVAL_US / 1000000ULL);
     Serial.flush();
-    displayOff();
+    if (oledOk) displayOff();
 
     esp_sleep_enable_timer_wakeup(SLEEP_INTERVAL_US);
     esp_deep_sleep_start();

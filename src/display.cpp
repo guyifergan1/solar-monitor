@@ -19,33 +19,43 @@ bool initOLED() {
     display.setTextSize(1);
     display.setCursor(0, 0);
     display.println(F("Solar IoT Node"));
-    display.println(F("Stage 1 - Ready"));
+    display.println(F("Initializing..."));
     display.display();
     Serial.println(F("[OK] SSD1306 OLED initialized at 0x3C"));
     return true;
 }
 
-void displayVoltage(float volts) {
-    // dtostrf: portable float->string conversion.
-    // Avoids printf float-support issues on some toolchains.
+void displayAll(float volts, float lightPct, uint32_t bootNum) {
     char vStr[10];
-    dtostrf(volts, 6, 3, vStr);
+    char lStr[8];
+    // dtostrf: portable float->string, avoids printf float issues on some toolchains
+    dtostrf(volts,   6, 3, vStr);
+    dtostrf(lightPct, 5, 1, lStr);
 
     display.clearDisplay();
 
+    // Header
     display.setTextSize(1);
     display.setCursor(0, 0);
     display.print(F("Solar IoT Node"));
     display.drawFastHLine(0, 10, SCREEN_W, SSD1306_WHITE);
 
+    // Voltage — large
     display.setTextSize(2);
-    display.setCursor(8, 20);
+    display.setCursor(0, 14);
     display.print(vStr);
-    display.print(F(" V"));
+    display.print(F("V"));
 
+    // Light — large
+    display.setTextSize(2);
+    display.setCursor(0, 34);
+    display.print(lStr);
+    display.print(F("%"));
+
+    // Footer — boot count
     display.setTextSize(1);
-    display.setCursor(0, 52);
-    display.print(F("INA3221 CH1 Bus"));
+    display.setCursor(0, 56);
+    display.printf("Boot #%u", bootNum);
 
     display.display();
 }
@@ -63,28 +73,5 @@ void displayError(const char* msg) {
 
 void displayOff() {
     display.clearDisplay();
-    display.display();
-}
-
-void displayLight(float percentage) {
-    char pStr[8];
-    dtostrf(percentage, 5, 1, pStr);
-
-    display.clearDisplay();
-
-    display.setTextSize(1);
-    display.setCursor(0, 0);
-    display.print(F("Solar IoT Node"));
-    display.drawFastHLine(0, 10, SCREEN_W, SSD1306_WHITE);
-
-    display.setTextSize(2);
-    display.setCursor(8, 20);
-    display.print(pStr);
-    display.print(F(" %"));
-
-    display.setTextSize(1);
-    display.setCursor(0, 52);
-    display.print(F("Light Level"));
-
     display.display();
 }

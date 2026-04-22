@@ -1,4 +1,5 @@
 #pragma once
+#include <Arduino.h>
 
 /**
  * @file  display.h
@@ -10,7 +11,6 @@
  */
 
 bool initOLED();
-void displayVoltage(float volts);
+void displayAll(float volts, float lightPct, uint32_t bootNum);
 void displayError(const char* msg);
-void displayLight(float percentage);
 void displayOff();
