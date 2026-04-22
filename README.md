@@ -1,30 +1,32 @@
 # Solar IoT Node — ESP32
 
-> Modular solar monitoring system built with ESP32, OLED SSD1306, INA3221, and LDR.  
-> Part of a 3-project embedded systems portfolio targeting real-world IoT applications.
+> Low-power solar monitoring node built on ESP32 with modular firmware architecture.  
+> Reads voltage (INA3221) and ambient light (LDR), renders live data on an OLED display,  
+> and enters Deep Sleep between cycles to minimise power consumption.  
+> Part of an embedded systems portfolio targeting real-world IoT applications.
 
 ---
 
 ## Hardware
 
-| Component | Interface | Pin/Address |
-|-----------|-----------|-------------|
+| Component | Interface | Pin / Address |
+|-----------|-----------|---------------|
 | ESP32 DevKit | — | — |
 | OLED SSD1306 (128×64) | I2C | 0x3C |
 | INA3221 (3-channel voltage/current sensor) | I2C | 0x40 |
-| LDR (light sensor) + 10kΩ resistor | ADC | GPIO34 |
+| LDR + 10 kΩ pull-down resistor | ADC | GPIO34 |
 
 ---
 
 ## Wiring
 
-### I2C (OLED + INA3221)
+### I2C Bus (OLED + INA3221)
 
 | ESP32 Pin | Signal | OLED | INA3221 |
 |-----------|--------|------|---------|
 | GPIO 21 | SDA | SDA | SDA |
 | GPIO 22 | SCL | SCL | SCL |
-| 3.3V | VCC | VCC | VCC |
+| 3.3 V | VCC | VCC | VCC |
 | GND | GND | GND | GND |
 
 ### LDR Voltage Divider
@@ -33,7 +35,7 @@
 3.3V → LDR → GPIO34 → 10kΩ → GND
 ```
 
-Both LDR legs connect at GPIO34 — that junction point is the measurement node.
+The midpoint between the LDR and the pull-down resistor is connected to GPIO34, which is the ADC measurement node.
 
 ---
 
@@ -41,30 +43,30 @@ Both LDR legs connect at GPIO34 — that junction point is the measurement node.
 
 ```
 src/
-├── config.h        — All #defines: pins, addresses, sleep interval
-├── display.h/.cpp  — OLED: init, voltage, light, error, off
-├── sensors.h/.cpp  — INA3221: init, bus voltage read
-├── ldr.h/.cpp      — LDR: init, read light as 0-100%
-└── main.cpp        — setup() + loop() only
+├── config.h        — Centralised #defines: pins, I2C addresses, timing constants
+├── display.h/.cpp  — OLED driver: init, combined data screen, error screen, power-off
+├── sensors.h/.cpp  — INA3221 driver: init, per-channel bus voltage read
+├── ldr.h/.cpp      — LDR driver: init, ADC read with clamp, return as 0–100 %
+└── main.cpp        — Entry point: wake → sense → display → sleep
 test/
-├── validator.py        — Serial reader; validates voltage and light readings
-├── test_solar_node.py  — pytest: connection, range, light, stability (7 tests)
+├── validator.py        — Serial port reader; validates voltage and light readings
+├── test_solar_node.py  — pytest suite: connection, range, light, stability (7 tests)
 └── requirements.txt    — pyserial, pytest
 ```
 
-Each hardware module has its own `.h`/`.cpp` pair. Hardware objects are `static` inside their `.cpp` files — never exposed outside the module.
+Each hardware driver is a self-contained `.h`/`.cpp` pair. The hardware object is `static` inside the `.cpp` file and never exposed beyond that translation unit — all interaction goes through the public API functions.
 
 ---
 
 ## Architecture Decisions
 
-**Deep Sleep** — ESP32 reads sensors, displays for 5 s, then sleeps 25 s. Wakes on timer. `setup()` runs on every wake cycle, `loop()` is empty.  
-**Graceful degradation** — each peripheral returns `bool` from init. System continues if one device is missing.  
-**`F()` macro** — string literals kept in Flash, not RAM.  
-**Encapsulation** — hardware objects hidden inside translation units, exposed only via function calls.  
-**`RTC_DATA_ATTR`** — boot counter survives Deep Sleep via RTC memory.  
-**OLED off before sleep** — `displayOff()` clears screen before sleep to save power.  
-**Continuous polling** — sensors read every 300 ms during the 5 s wake window; OLED and Serial update in real time.
+**Deep Sleep** — The node reads sensors, updates the display for 5 s, then sleeps for 25 s (30 s total cycle). `setup()` executes on every wake; `loop()` is intentionally empty.  
+**Graceful degradation** — Every peripheral `init` function returns `bool`. The system logs the fault and continues if a device is absent.  
+**`F()` macro** — String literals are stored in Flash rather than copied to RAM at runtime.  
+**Encapsulation** — Hardware objects are hidden inside their translation units and accessed only through function calls, preventing unintended shared state.  
+**`RTC_DATA_ATTR`** — The boot counter is placed in RTC-retained memory so it survives Deep Sleep without a battery-backed RTC chip.  
+**OLED off before sleep** — `displayOff()` clears and blanks the display before the MCU sleeps, eliminating screen idle current.  
+**Continuous polling** — Sensors are sampled every 300 ms during the wake window; both Serial and OLED reflect each reading in real time.
 
 ---
 
@@ -92,50 +94,53 @@ Sensors are polled every 300 ms during the 5 s wake window, then the node sleeps
 ## Stages
 
 ### Stage 1 — OLED + INA3221 ✅
-- I2C bus init with explicit pins (GPIO21/22)
-- OLED displays live voltage reading
-- INA3221 reads CH1 bus voltage
-- Panic handler (LED blink) if no I2C devices found
+- I2C bus initialised with explicit SDA/SCL pins (GPIO21/22)
+- INA3221 reads CH1 bus voltage; result rendered on OLED
+- Fault logged to Serial if no I2C devices are detected
 
 ### Stage 2 — LDR Light Sensor ✅
-- LDR + 10kΩ voltage divider on GPIO34 (ADC1)
-- Reads light level as 0-100% with ADC clamp guard
-- New module: `ldr.h` / `ldr.cpp`
+- LDR + 10 kΩ voltage divider on GPIO34 (ADC1 — safe with WiFi)
+- ADC value clamped to [0, 4095] before conversion to 0–100 %
+- Isolated into its own `ldr.h` / `ldr.cpp` module
 
 ### Stage 3 — Deep Sleep ✅
-- ESP32 reads sensors → displays → sleeps 25 seconds → wakes (30s total cycle)
-- Combined OLED screen: voltage + light % + boot counter on one frame
-- Screen stays on 5 seconds (readable), then clears before sleep
-- `setup()` runs on every wake cycle; `loop()` is intentionally empty
-- Boot count tracked across sleep cycles via `RTC_DATA_ATTR` (RTC memory)
+- 30 s duty cycle: 5 s active (sense + display) → 25 s Deep Sleep
+- Single OLED frame shows bus voltage, light percentage, and boot count
+- Boot count persisted across sleep cycles via `RTC_DATA_ATTR`
+- Sensors polled every 300 ms while awake; Serial and OLED update in real time
 
-### Stage 4 — WiFi + Data Logging 🔜
-- Send readings to server / MQTT / Google Sheets
-- Over-the-air updates
+### Stage 4 — WiFi + Remote Logging 🔜
+- Connect to WiFi on wake; publish readings via MQTT or HTTP
+- Log data to a time-series store (InfluxDB, Google Sheets, or similar)
+- Over-the-air (OTA) firmware updates
 
-### Stage 5 — Full Solar Monitoring 🔜
-- Solar panel (6V) via LM2596 buck converter
-- INA3221 CH1: panel voltage, CH2: battery, CH3: load current
-- Fully autonomous — no USB required
+### Stage 5 — Autonomous Solar Operation 🔜
+- 6 V solar panel stepped down via LM2596 buck converter
+- INA3221 CH1: panel voltage / CH2: battery voltage / CH3: load current
+- Fully off-grid — no USB power required
 
 ---
 
 ## Setup
 
 1. Install [PlatformIO](https://platformio.org/)
-2. Clone this repo
-3. Open in VS Code — PlatformIO auto-installs all libraries
-4. Upload to ESP32
+2. Clone this repository
+3. Open in VS Code — PlatformIO resolves and installs all libraries automatically
+4. Upload to the ESP32 via the PlatformIO toolbar
 
-**Dependencies** (auto-installed):
+**Library dependencies** (auto-installed via `platformio.ini`):
 - `adafruit/Adafruit INA3221 Library @ ^1.0.1`
 - `adafruit/Adafruit GFX Library @ ^1.11.9`
 - `adafruit/Adafruit SSD1306 @ ^2.5.9`
 
-## Running Python Validation Tests
+---
+
+## Validation Tests
 
 ```bash
 cd test
 pip install -r requirements.txt
 pytest test_solar_node.py -v
 ```
+
+Tests verify serial connectivity, voltage range (0–26 V), light range (0–100 %), and reading stability across five consecutive samples.
