@@ -61,6 +61,11 @@ void displayError(const char* msg) {
     display.display();
 }
 
+void displayOff() {
+    display.clearDisplay();
+    display.display();
+}
+
 void displayLight(float percentage) {
     char pStr[8];
     dtostrf(percentage, 5, 1, pStr);

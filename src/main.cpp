@@ -1,11 +1,13 @@
 /**
  * @file  main.cpp
- * @brief Solar IoT Node — Stage 1 entry point.
+ * @brief Solar IoT Node — Stage 3: Deep Sleep.
  *
- * setup() and loop() only. All hardware logic lives in:
- *   display.cpp  — OLED init and draw
- *   sensors.cpp  — INA3221 init and read
- *   config.h     — pins, addresses, timing constants
+ * On every wake cycle:
+ *   1. Read sensors (INA3221 + LDR)
+ *   2. Display on OLED
+ *   3. Enter Deep Sleep for SLEEP_INTERVAL_US
+ *
+ * setup() runs on every wake. loop() is intentionally empty.
  */
 
 #include <Arduino.h>
@@ -15,57 +17,43 @@
 #include "sensors.h"
 #include "ldr.h"
 
-static bool     oledOk      = false;
-static bool     inaOk       = false;
-static uint32_t lastReadMs  = 0;
-static bool     showVoltage = true;  // toggles display between voltage and light
+RTC_DATA_ATTR static uint32_t bootCount = 0;
 
 void setup() {
+    bootCount++;
+
     Serial.begin(115200);
     Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
 
-    Serial.println(F("\n=== Solar IoT Node - Stage 1 ==="));
+    Serial.printf("\n=== Solar IoT Node - Stage 3 | Boot #%u ===\n", bootCount);
 
-    oledOk = initOLED();
-    inaOk  = initINA3221();
+    bool oledOk = initOLED();
+    bool inaOk  = initINA3221();
     initLDR();
 
-    // If nothing responds on I2C the wiring is wrong — blink LED as a panic indicator
     if (!oledOk && !inaOk) {
-        Serial.println(F("[FATAL] No I2C peripherals detected. Check wiring!"));
-        pinMode(LED_BUILTIN, OUTPUT);
-        while (true) {
-            digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-            delay(150);
-        }
-    }
-}
-
-void loop() {
-    // millis() subtraction handles the ~49-day rollover correctly
-    if (millis() - lastReadMs < READ_INTERVAL_MS) return;
-    lastReadMs = millis();
-
-    if (!inaOk) {
-        Serial.println(F("[WARN] INA3221 unavailable — skipping read"));
-        if (oledOk) displayError("INA3221\nNot Found");
-        return;
+        Serial.println(F("[FATAL] No I2C peripherals. Check wiring!"));
     }
 
-    float busVoltage = readBusVoltage(0);   // CH1 = index 0
+    float busVoltage = inaOk ? readBusVoltage(0) : 0.0f;
+    float light      = readLightPercentage();
 
     Serial.print(F("[DATA] CH1 Bus Voltage: "));
     Serial.print(busVoltage, 3);
     Serial.println(F(" V"));
 
-    float light = readLightPercentage();
     Serial.print(F("[DATA] Light: "));
     Serial.print(light, 1);
     Serial.println(F(" %"));
 
-    if (oledOk) {
-        if (showVoltage) displayVoltage(busVoltage);
-        else             displayLight(light);
-        showVoltage = !showVoltage;
-    }
+    if (oledOk) displayVoltage(busVoltage);
+
+    Serial.printf("[INFO] Sleeping for %llu seconds...\n", SLEEP_INTERVAL_US / 1000000ULL);
+    Serial.flush();
+    displayOff();
+
+    esp_sleep_enable_timer_wakeup(SLEEP_INTERVAL_US);
+    esp_deep_sleep_start();
 }
+
+void loop() {}

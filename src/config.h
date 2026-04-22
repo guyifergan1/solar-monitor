@@ -24,5 +24,7 @@
 #define LDR_PIN     34      // GPIO34 — ADC1, input-only, safe with WiFi
 #define LDR_MAX     4095    // ESP32 ADC is 12-bit (0–4095)
 
-// ── Timing ───────────────────────────────────────────────────────────────────
-static constexpr uint32_t READ_INTERVAL_MS = 2000UL;
+// ── Deep Sleep ────────────────────────────────────────────────────────────────
+#define SLEEP_INTERVAL_US   10000000ULL  // 10 seconds in microseconds (uint64_t)
+
+
