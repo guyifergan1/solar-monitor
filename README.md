@@ -47,8 +47,8 @@ src/
 ├── ldr.h/.cpp      — LDR: init, read light as 0-100%
 └── main.cpp        — setup() + loop() only
 test/
-├── validator.py        — Serial reader and voltage validator class
-├── test_solar_node.py  — pytest tests (connection, range, stability)
+├── validator.py        — Serial reader; validates voltage and light readings
+├── test_solar_node.py  — pytest: connection, range, light, stability (7 tests)
 └── requirements.txt    — pyserial, pytest
 ```
 
@@ -63,11 +63,14 @@ Each hardware module has its own `.h`/`.cpp` pair. Hardware objects are `static`
 **`F()` macro** — string literals kept in Flash, not RAM.  
 **Encapsulation** — hardware objects hidden inside translation units, exposed only via function calls.  
 **`RTC_DATA_ATTR`** — boot counter survives Deep Sleep via RTC memory.  
-**OLED off before sleep** — `displayOff()` clears screen before sleep to save power.
+**OLED off before sleep** — `displayOff()` clears screen before sleep to save power.  
+**Continuous polling** — sensors read every 300 ms during the 5 s wake window; OLED and Serial update in real time.
 
 ---
 
 ## Serial Output
+
+Sensors are polled every 300 ms during the 5 s wake window, then the node sleeps for 25 s.
 
 ```
 === Solar IoT Node - Stage 3 | Boot #1 ===
@@ -75,6 +78,9 @@ Each hardware module has its own `.h`/`.cpp` pair. Hardware objects are `static`
 [OK] INA3221 initialized at 0x40
 [DATA] CH1 Bus Voltage: 3.300 V
 [DATA] Light: 75.8 %
+[DATA] CH1 Bus Voltage: 3.301 V
+[DATA] Light: 75.6 %
+... (repeats every 300 ms for 5 seconds)
 [INFO] Sleeping for 25 seconds...
 
 === Solar IoT Node - Stage 3 | Boot #2 ===
@@ -93,8 +99,7 @@ Each hardware module has its own `.h`/`.cpp` pair. Hardware objects are `static`
 
 ### Stage 2 — LDR Light Sensor ✅
 - LDR + 10kΩ voltage divider on GPIO34 (ADC1)
-- Reads light level as 0-100%
-- OLED alternates between voltage and light screens
+- Reads light level as 0-100% with ADC clamp guard
 - New module: `ldr.h` / `ldr.cpp`
 
 ### Stage 3 — Deep Sleep ✅
